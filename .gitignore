@@ -2,6 +2,8 @@
 .DS_*
 ~$*
 __*
+secrets/
+.ipynb_checkpoints/
 
 # History files
 .Rhistory
