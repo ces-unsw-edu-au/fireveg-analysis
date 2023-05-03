@@ -5,6 +5,10 @@ __*
 secrets/
 .ipynb_checkpoints/
 
+# Manage data in the cloud and do not include in git repo
+*.rds
+*.rda
+
 # History files
 .Rhistory
 .Rapp.history
