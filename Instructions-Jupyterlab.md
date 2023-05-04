@@ -48,10 +48,13 @@ Within the environment
 
 ```{r}
 #R --vanilla
+install.packages("IRkernel")
 IRkernel::installspec()
 ```
 
 ## Install additional libraries
+
+### In Python
 
 Install python libraries with pip
 
@@ -60,6 +63,12 @@ pip install openpyxl psycopg2-binary
 pip install pandas SQLAlchemy
 pip install pybtex
 #pip install postgis
+```
+### In R
+
+```{bash}
+install.packages("remotes")
+remotes::install_github("AtlasOfLivingAustralia/galah")
 ```
 
 ## Start the jupyter lab interface:
