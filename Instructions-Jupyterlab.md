@@ -81,3 +81,17 @@ cd ~/proyectos/fireveg/fire-veg-aust
 ## then:
 jupyter-lab
 ```
+
+## Install R packages
+
+### V.PhyloMaker
+
+From this repo: https://github.com/jinyizju/V.PhyloMaker
+
+```{r}
+install.packages("devtools")
+devtools::install_github("jinyizju/V.PhyloMaker")
+install.packages("BiocManager")
+BiocManager::install("ggtree")
+install.packages("ggnewscale")
+```
