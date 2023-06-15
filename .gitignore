@@ -8,6 +8,7 @@ secrets/
 # Manage data in the cloud and do not include in git repo
 *.rds
 *.rda
+*.gpkg
 
 # History files
 .Rhistory
