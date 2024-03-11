@@ -74,10 +74,58 @@ remotes::install_github("AtlasOfLivingAustralia/galah")
 ## Start the jupyter lab interface:
 
 ```sh
-cd ~/proyectos/fireveg/fire-veg-aust
-## conda activate jptr
-##or 
-## source $HOME/venv/jptr/bin/activate
-## then:
+cd ~/proyectos/fireveg/fireveg-analysis
+if [ -e $HOME/venv/jptr ]
+then 
+    source $HOME/venv/jptr/bin/activate
+elif [ -e $HOME/proyectos/venv/ ]
+then 
+    source $HOME/proyectos/venv/jupyterlab/bin/activate
+else 
+    conda activate jptr
+fi 
 jupyter-lab
 ```
+
+## Install R packages
+
+```{r}
+install.packages("ozmaps")
+#install.packages("remotes")
+remotes::install_github("AtlasOfLivingAustralia/galah")
+```
+
+
+### V.PhyloMaker
+
+From this repo: https://github.com/jinyizju/V.PhyloMaker
+
+```{r}
+install.packages("devtools")
+devtools::install_github("jinyizju/V.PhyloMaker")
+install.packages("BiocManager")
+BiocManager::install("ggtree")
+install.packages("ggnewscale")
+```
+
+
+### Treemapify
+
+```{r}
+install.packages("treemapify")
+## devtools::install_github("wilkox/treemapify")
+```
+
+### rWCVP
+
+This is a companion R package for the World Checklist of Vascular Plants
+Citation: https://doi.org/10.1111/nph.18919
+
+```{r}
+install.packages("rWCVP")
+remotes::install_github('matildabrown/rWCVPdata')
+```
+
+## Database connection
+
+We store basic database credentials in a hidden file in the `secrets` folder, but password information need to be stored in a `.pgpass` file in the home directory to avoid exposing data in the jupyter notebook.
