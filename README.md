@@ -27,7 +27,6 @@ This repository is part of the OSF project component:
 
 > Ferrer-Paris, J. R., Keith, D., & Sánchez-Mercado, A. (2024, August 25). Fire Ecology Traits for Plants: Data analysis and visualisation. Retrieved from [osf.io/kjevh](https://osf.io/kjevh/)
 
-
 ### Project overview
 
 <!--// Need to update this figure
@@ -40,15 +39,17 @@ This project consists of several linked components:
   - :file_cabinet: **SQL structure of the fireveg database** [osf.io/4csyz](https://osf.io/4csyz)
     - :gear: Source code for defining the structure of the tables in a PostgreSQL database is available in this [GitHub repository](https://github.com/ces-unsw-edu-au/fireveg-db) 
   - :briefcase: **Code for populating the fireveg database** [osf.io/rj68t](https://osf.io/znuge)
-    - :gear: Source code for populating and managing the database is available in this [GitHub repository](https://github.com/ces-unsw-edu-au/fireveg-db-imports) <-- :dart: You are here! -->
+    - :gear: Source code for populating and managing the database is available in this [GitHub repository](https://github.com/ces-unsw-edu-au/fireveg-db-imports) 
   - :computer: **Webapp for browsing the fireveg database** [osf.io/rj68t](https://osf.io/rj68t)
     - :gear: Source code for setting up and running the Flask webapp id available in the [GitHub repository](https://github.com/ces-unsw-edu-au/fireveg-webapp)
     - :computer: Acess to the [Webapp](http://fireecologyplants.net) (Register with a verified email address)
-  - :bar_chart: **Data coverage of Fire Ecology Traits for Plants database** [osf.io/h96q2](https://osf.io/h96q2/)
+  - :bar_chart: **Export data records from Fire Ecology Traits for Plants database** [osf.io/h96q2](https://osf.io/h96q2/)
     - :gear: Source code in [GitHub repository](https://github.com/ces-unsw-edu-au/fireveg-db-exports/)
     - :label: A Database snapshot (SQL dump) is available as a Figshare dataset with DOI:[10.6084/m9.figshare.23361002](https://doi.org/10.6084/m9.figshare.23361002)
     - :label: Database exports (summary tables, CSV/XLSX formats) available as Figshare dataset with DOI:[10.6084/m9.figshare.24125088](https://doi.org/10.6084/m9.figshare.24125088)
   - :technologist: **Fire Ecology Traits for Plants: Data analysis and visualisation** [osf.io/kjevh](https://osf.io/kjevh)
-    - :gear: Source code in [GitHub repository](https://github.com/ces-unsw-edu-au/fireveg-analysis)
+    - :gear: Source code in [GitHub repository](https://github.com/ces-unsw-edu-au/fireveg-analysis) <-- :dart: You are here! -->
     - :gear: Source code in [BitBucket repository](https://bitbucket.org/fireveg/fireveg-presentations)
     - :speech_balloon: [Presentation slides](https://rpubs.com/jrfep/firevegdb-ESA2023) 
+
+
