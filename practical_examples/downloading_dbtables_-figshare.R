@@ -16,7 +16,7 @@ destfile <- "practical_examples/data.zip"
 GET(url, write_disk(destfile, overwrite = TRUE), config = config(ssl_verifypeer = FALSE))
 
 # 2. Unzip the file ----
-unzip(destfile, exdir = "input") # Create the folder input with the unzipped data
+unzip(destfile, exdir = "practical_examples/input") # Create the folder input with the unzipped data
 
 # What did the unzipped file say to the compressed file? "Wow, you've really let yourself go!"
 

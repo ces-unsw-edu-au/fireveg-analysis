@@ -11,12 +11,145 @@ library(ggtext)
 library(patchwork) # For combining plots
 library(RColorBrewer) # For define colors palletes
 library(ggridges)  # For plotting density ridges
+library(ggdist)    # For plotting densities
 
 # 1. Read the figshare tables ----
-field_records <- read_csv("input/fireveg-field-records.csv")
+field_records <- read_csv("practical_examples/input/fireveg-field-records.csv")
 
-# 2. Calculate traits by species -----
+# 2. Select the top 20 ----
+# Species with more localities and plots
+top_species <- field_records |>
+  group_by(species) |>
+  summarise(
+    n_localities = n_distinct(visit_id),
+    n_visits = n_distinct(visit_date),
+    n_plots = n_distinct(sample_nr)
+  ) |>
+  slice_max(n_localities, n = 20) |>
+  pull(species)
+
+
+# 3. Calculate traits by species -----
 # Number of individuals with a given trait
+spp_trait <- field_records |>
+  filter(species %in% top_species) |>
+  mutate(spp_type = case_when(
+    resprout_organ %in% c("None") ~ "Seeder", 
+    resprout_organ %in% c("Apical", "Basal", "Epicormic", "Lignotuber", "Short rhizome", "Stolon", "Tuber", "Tussock") ~ "Resprouter")
+  ) |>
+  group_by(species, visit_id, visit_date, spp_type) |>
+  summarise(n1 = sum(resprouts_live, na.rm = TRUE),         # N total live resprouts (N1)
+            n2 = sum(resprouts_reproductive, na.rm = TRUE), # N reproductive live resprouts (N2)
+            n5 = sum(recruits_live, na.rm = TRUE),          # N total live recruits (N5)
+            n6 = sum(recruits_reproductive, na.rm = TRUE),  # N reproductive live recruits (N6)
+            n7 = sum(resprouts_died, na.rm = TRUE),         # N Dead resprouts (N7). This variable is all 0
+            n8 = sum(recruits_died, na.rm = TRUE),          # N dead recruits (N8)
+            n9 = sum(resprouts_kill, na.rm = TRUE)      # N fire killed resprouts (N9)
+) |>
+  mutate(prop_fire_mortality = n9 /(n1 + n7 + n9),
+         prop_sprout_surv = n7/ (n1 + n7),
+         seed_adult = (n5 + n8) / (n1 + n7),
+         pro_recruit_surv = n5 / (n5 + n8),
+         prop_reprod_recruit = n6 / max(n5)
+  ) 
+
+str(spp_trait)
+n_distinct(spp_trait$species)
+
+
+# Examle 1: Distribution of traits in the top 20 spp ----
+plot_mortality <- spp_trait |>
+  ggplot(aes(x = prop_fire_mortality, y = species, fill = spp_type)) +
+  geom_density_ridges(scale = 0.4) +
+  theme_ridges() +
+  labs(title = "Fire mortality",
+       x = "Proportion",
+       y = "",
+       fill = "Species Type") +
+  scale_fill_manual(values = c("#6E016B", "#000000")) +
+  scale_x_continuous(limits = c(0,1), breaks = seq(0, 1, by = 0.5)) +
+  theme(legend.position = "none")
+
+plot_recruit_surv <- spp_trait |>
+  ggplot(aes(x = pro_recruit_surv, y = species, fill = spp_type)) +
+  geom_density_ridges(scale = 0.4) +
+  theme_ridges() +
+  labs(title = "Recruit survival",
+       x = "Proportion",
+       y = "",
+       fill = "Species Type") +
+  scale_fill_manual(values = c("#6E016B", "#000000")) +
+  scale_x_continuous(limits = c(0,1), breaks = seq(0, 1, by = 0.5)) +
+  theme(legend.position = "bottom",
+        axis.text.y = element_blank())
+
+plot_sprout_surv <- spp_trait |>
+  ggplot(aes(x = prop_sprout_surv, y = species, fill = spp_type)) +
+  geom_density_ridges(scale = 0.4) +
+  theme_ridges() +
+  labs(title = "Sprout survival",
+       x = "Proportion",
+       y = "",
+       fill = "Species Type") +
+  scale_fill_manual(values = c("#6E016B", "#000000")) +
+  scale_x_continuous(limits = c(0,1), breaks = seq(0, 1, by = 0.5)) +
+  theme(legend.position = "none",
+        axis.text.y = element_blank())
+
+plot_reprod_recruit <- spp_trait |>
+  ggplot(aes(x = prop_reprod_recruit, y = species, fill = spp_type)) +
+  geom_density_ridges(scale = 0.4) +
+  theme_ridges() +
+  labs(title = "Reproductive recruits",
+       x = "Proportion",
+       y = "",
+       fill = "Species Type") +
+  scale_fill_manual(values = c("#6E016B", "#000000")) +
+  scale_x_continuous(limits = c(0,1), breaks = seq(0, 1, by = 0.5)) +
+  theme(legend.position = "none",
+        axis.text.y = element_blank())
+
+plot_mortality + plot_sprout_surv + plot_recruit_surv + plot_reprod_recruit +
+  plot_layout(ncol = 4)
+
+ggsave("practical_examples/plots/example_dist_trait_by_topspp.png", width = 15, height = 10)
+
+# Example 2: Spatial variation ----
+unique(field_records$visit_id)
+
+library(stringr)
+
+# Filter the records based on visit_id and the year
+west_east_locations <- field_records |>
+  mutate(region = case_when(
+    str_starts(visit_id, "S20") ~ "West",
+    TRUE ~ "East"
+  )) |>
+  group_by(species, visit_id, visit_date, region) |>
+  summarise(n1 = sum(resprouts_live, na.rm = TRUE),         # N total live resprouts (N1)
+            n2 = sum(resprouts_reproductive, na.rm = TRUE), # N reproductive live resprouts (N2)
+            n5 = sum(recruits_live, na.rm = TRUE),          # N total live recruits (N5)
+            n6 = sum(recruits_reproductive, na.rm = TRUE),  # N reproductive live recruits (N6)
+            n7 = sum(resprouts_died, na.rm = TRUE),         # N Dead resprouts (N7). This variable is all 0
+            n8 = sum(recruits_died, na.rm = TRUE),          # N dead recruits (N8)
+            n9 = sum(resprouts_kill, na.rm = TRUE)      # N fire killed resprouts (N9)
+  ) |>
+  mutate(prop_fire_mortality = n9 /(n1 + n7 + n9),
+         prop_sprout_surv = n7/ (n1 + n7),
+         seed_adult = (n5 + n8) / (n1 + n7),
+         pro_recruit_surv = n5 / (n5 + n8),
+         prop_reprod_recruit = n6 / max(n5)
+  ) |>
+  ungroup()
+
+
+west_east_locations |> select(visit_id, region) |> table()
+
+
+
+
+
+
 
 plant_traits <- field_records |>
   # Resprout organ counts
@@ -63,9 +196,10 @@ plant_traits <- plant_traits |>
          prop_reprod_recruit = n6 / max(n5),
          surv_dens = n2 / 625, # plot area
          recruit_dens = n5 / 625 # plot area
-  )
+  ) 
 
 str(plant_traits)
+
 
 # 4. Seeders and resprouters -----
 
