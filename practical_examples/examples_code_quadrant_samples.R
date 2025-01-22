@@ -13,9 +13,12 @@ library(RColorBrewer) # For define colors palletes
 library(ggridges)  # For plotting density ridges
 library(ggdist)    # For plotting densities
 library(stringr)
+library(readxl)    # For reading data in Excel format
 
 # 1. Read the figshare tables ----
-field_records <- read_csv("practical_examples/input/fireveg-field-records.csv")
+field_records <- read_csv("~/Publications/Ferrer_Paris_ et al_Fireveg/Figshare_documents/input/fireveg-field-records.csv")
+
+species_list <- read_excel("~/Publications/Ferrer_Paris_ et al_Fireveg/Figshare_documents/input/fireveg-field-report-model.xlsx", sheet = 4)
 
 # 2. Select the top 20 ----
 # Species with more localities and plots
@@ -29,16 +32,14 @@ top_species <- field_records |>
   slice_max(n_localities, n = 20) |>
   pull(species)
 
-
 # 3. Calculate traits by species -----
 # Number of individuals with a given trait
 spp_trait <- field_records |>
-  filter(species %in% top_species) |>
   mutate(spp_type = case_when(
     resprout_organ %in% c("None") ~ "Seeder", 
     TRUE ~ "Resprouter")
   ) |>
-  group_by(species, visit_id, visit_date, spp_type) |>
+  group_by(species, visit_id, visit_date, spp_type, resprout_organ, seedbank) |>
   summarise(n1 = sum(resprouts_live, na.rm = TRUE),         # N total live resprouts (N1)
             n2 = sum(resprouts_reproductive, na.rm = TRUE), # N reproductive live resprouts (N2)
             n5 = sum(recruits_live, na.rm = TRUE),          # N total live recruits (N5)
@@ -52,8 +53,131 @@ spp_trait <- field_records |>
          seed_adult = (n5 + n8) / (n1 + n7),
          pro_recruit_surv = n5 / (n5 + n8),
          prop_reprod_recruit = n6 / max(n5)
+  ) |>
+  as_tibble()
+
+# Add family information
+full_spp_trait <- left_join(spp_trait, species_list, by = c("species" = "Scientific name (as entered)"))
+
+
+# Summary table
+full_spp_trait |> count(spp_type)
+full_spp_trait |> count(seedbank)
+full_spp_trait |> count(resprout_organ)
+
+# 3. Select the top 4 families -----
+# Which are the families with more spp?
+ species_list |>
+  group_by(Family) |>
+  summarise(
+    n_spp = n_distinct(`Scientific name (as entered)`)
   ) 
 
+top_families <- full_spp_trait |>
+  group_by(Family) |>
+  summarise(n_spp = n_distinct(species)) |>
+  arrange(desc(n_spp)) |>
+  slice_max(n_spp, n = 5 ) |>
+  na.omit(Family) |>
+  pull(Family)
+
+# List with the species names in these 4 top families
+spp_in_topfam <- species_list |>
+  filter(Family %in% top_families) |>
+  pull(`Scientific name (as entered)`)
+
+
+
+# 6. Example: Organ type & Seedbank ----
+# We illustrate the prevalence of particular organ types, differentiating between seeders (none organ type)
+# and resprouters with different type of organ type across all plant species included in the field observation data.
+
+# Get the hex color codes
+# brewer.pal(8, "BuPu")
+
+# Define pallet of color for resprouter organ
+all_spp_traits |> count(resprout_organ) |> arrange(n)
+
+pal_fill_org_type <- c(
+  "Apical" = "#EDF8FB",
+  "Epicormic"  = "#BFD3E6",
+  "Short rhizome" = "#9EBCDA",
+  "Stolon" = "#8C96C6", 
+  "Tuber" = "#8C6BB1", 
+  "Tussock" = "#88419D", 
+  "Lignotuber" = "#810F7C", 
+  "Basal" = "#4D004B",
+  "None" = "black"
+)
+
+# Now, let's do the plot
+
+plot_organ_type <- all_spp_traits|> 
+  count(resprout_organ) |>
+  arrange(n) |> 
+  filter_at(vars(resprout_organ, n), all_vars(!is.na(.))) |>
+  ggplot(aes(values = n, fill = resprout_organ)) +
+  waffle::geom_waffle(
+    n_rows = 4,        # Number of squares in each row
+    color = "white",   # Border color
+    flip = F, na.rm = TRUE, 
+    make_proportional = T,
+    show.legend = T) +
+  labs(title = "<b>Organ type</b>",
+       subtitle = "A third of species are <br><b><span style='color:#000000;'>seeders</span></b> with none resprout organ. Among resprouter species, <br><b><span style='color:#6E016B;'>basal</span></b> organ is more common.") +
+  coord_equal() +
+  theme_classic() +
+  scale_fill_manual(values = pal_fill_org_type) +
+  theme(
+    plot.title=element_markdown(), # Enable markdown for title and subtitle
+    plot.subtitle=element_markdown(),
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position ="bottom",
+    legend.title = element_blank()
+  ) 
+
+# Define pallet of color for seedbank
+# Get the hex color codes
+display.brewer.pal(7, "Greys")
+brewer.pal(7, "Greys")
+
+pal_fill_seedbank <- c(
+  "Soil-persistent" = "#525252",
+  "Non-canopy" =  "#737373",
+  "Canopy" =  "#969696",
+  "Transient" = "#D9D9D9" )
+
+plot_seedbank <- all_spp_traits |>
+  count(seedbank) |>
+  arrange(n) |>
+  filter_at(vars(seedbank, n), all_vars(!is.na(.))) |>
+  ggplot(aes(values = n, fill = seedbank)) +
+  waffle::geom_waffle(
+    n_rows = 4,        # Number of squares in each row
+    color = "white",   # Border color
+    flip = F, na.rm = TRUE, 
+    make_proportional = T,
+    show.legend = T) +
+  labs(title = "<b>Seedbank type</b>",
+       subtitle = "The most frequent seedbank type is <br><b><span style='color:#D9D9D9;'>Transient</span></b> followed by <br><b><span style='color:#737373;'>Non-canopy</span></b> organ is more common.") +
+  coord_equal() +
+  theme_classic() +
+  scale_fill_manual(values = pal_fill_seedbank) +
+  theme(
+    plot.title=element_markdown(), # Enable markdown for title and subtitle
+    plot.subtitle=element_markdown(),
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    legend.position ="bottom",
+    legend.title = element_blank()
+  ) 
+
+plot_organ_type + plot_seedbank
+
+ggsave("practical_examples/plots/dist_seeders_resprouters.png", width = 12, height = 8)
 
 
 # 4. Example: Distribution of traits in the top 20 spp ----
@@ -112,6 +236,7 @@ plot_mortality + plot_recruit_surv + plot_reprod_recruit +
   plot_layout(ncol = 4)
 
 ggsave("practical_examples/plots/example_dist_trait_by_topspp.png", width = 10, height = 8)
+
 
 
 # 5. Example: Spatial variation ----
@@ -201,123 +326,6 @@ spatial_fire_mortality + spatial_dist_recruitsurv + spatial_dist_reprodrecruit
 ggsave("practical_examples/plots/spatial_dist.png", width = 15, height = 8)
 
 
-# 6. Example: Organ type & Seedbank ----
-# We illustrate the prevalence of particular organ types, differentiating between seeders (none organ type)
-# and resprouters with different type of organ type.
-
-all_spp_traits <- field_records |>
-  mutate(spp_type = case_when(
-    resprout_organ %in% c("None") ~ "Seeder", 
-    TRUE ~ "Resprouter")
-  ) |>
-  group_by(species, visit_id, visit_date, spp_type, resprout_organ, seedbank ) |>
-  summarise(n1 = sum(resprouts_live, na.rm = TRUE),         # N total live resprouts (N1)
-            n2 = sum(resprouts_reproductive, na.rm = TRUE), # N reproductive live resprouts (N2)
-            n5 = sum(recruits_live, na.rm = TRUE),          # N total live recruits (N5)
-            n6 = sum(recruits_reproductive, na.rm = TRUE),  # N reproductive live recruits (N6)
-            n7 = sum(resprouts_died, na.rm = TRUE),         # N Dead resprouts (N7). This variable is all 0
-            n8 = sum(recruits_died, na.rm = TRUE),          # N dead recruits (N8)
-            n9 = sum(resprouts_kill, na.rm = TRUE)          # N fire killed resprouts (N9)
-  ) |>
-  mutate(prop_fire_mortality = n9 /(n1 + n7 + n9),
-         prop_sprout_surv = n7/ (n1 + n7),
-         seed_adult = (n5 + n8) / (n1 + n7),
-         pro_recruit_surv = n5 / (n5 + n8),
-         prop_reprod_recruit = n6 / max(n5)
-  ) |>
-  ungroup()
-
-# Summary table
-all_spp_traits |> count(spp_type)
-all_spp_traits |> count(seedbank)
-all_spp_traits |> count(resprout_organ)
-
-# Get the hex color codes
-# brewer.pal(8, "BuPu")
-
-# Define pallet of color for resprouter organ
-all_spp_traits |> count(resprout_organ) |> arrange(n)
-
-pal_fill_org_type <- c(
-  "Apical" = "#EDF8FB",
-  "Epicormic"  = "#BFD3E6",
-  "Short rhizome" = "#9EBCDA",
-  "Stolon" = "#8C96C6", 
-  "Tuber" = "#8C6BB1", 
-  "Tussock" = "#88419D", 
-  "Lignotuber" = "#810F7C", 
-  "Basal" = "#4D004B",
-  "None" = "black"
-)
-
-# Now, let's do the plot
-
-plot_organ_type <- all_spp_traits|> 
-  count(resprout_organ) |>
-  arrange(n) |> 
-  filter_at(vars(resprout_organ, n), all_vars(!is.na(.))) |>
-  ggplot(aes(values = n, fill = resprout_organ)) +
-  waffle::geom_waffle(
-    n_rows = 4,        # Number of squares in each row
-    color = "white",   # Border color
-    flip = F, na.rm = TRUE, 
-    make_proportional = T,
-    show.legend = T) +
-  labs(title = "<b>Organ type</b>",
-       subtitle = "A third of species are <br><b><span style='color:#000000;'>seeders</span></b> with none resprout organ. Among resprouter species, <br><b><span style='color:#6E016B;'>basal</span></b> organ is more common.") +
-  coord_equal() +
-  theme_classic() +
-  scale_fill_manual(values = pal_fill_org_type) +
-  theme(
-    plot.title=element_markdown(), # Enable markdown for title and subtitle
-    plot.subtitle=element_markdown(),
-    panel.grid = element_blank(),
-    axis.text = element_blank(),
-    axis.ticks = element_blank(),
-    legend.position ="bottom",
-    legend.title = element_blank()
-  ) 
-
-# Define pallet of color for seedbank
-# Get the hex color codes
-display.brewer.pal(7, "Greys")
-brewer.pal(7, "Greys")
-
-pal_fill_seedbank <- c(
-  "Soil-persistent" = "#525252",
-  "Non-canopy" =  "#737373",
-  "Canopy" =  "#969696",
-  "Transient" = "#D9D9D9" )
-
-plot_seedbank <- all_spp_traits |>
-  count(seedbank) |>
-  arrange(n) |>
-  filter_at(vars(seedbank, n), all_vars(!is.na(.))) |>
-  ggplot(aes(values = n, fill = seedbank)) +
-  waffle::geom_waffle(
-    n_rows = 4,        # Number of squares in each row
-    color = "white",   # Border color
-    flip = F, na.rm = TRUE, 
-    make_proportional = T,
-    show.legend = T) +
-  labs(title = "<b>Seedbank type</b>",
-       subtitle = "The most frequent seedbank type is <br><b><span style='color:#D9D9D9;'>Transient</span></b> followed by <br><b><span style='color:#737373;'>Non-canopy</span></b> organ is more common.") +
-  coord_equal() +
-  theme_classic() +
-  scale_fill_manual(values = pal_fill_seedbank) +
-  theme(
-    plot.title=element_markdown(), # Enable markdown for title and subtitle
-    plot.subtitle=element_markdown(),
-    panel.grid = element_blank(),
-    axis.text = element_blank(),
-    axis.ticks = element_blank(),
-    legend.position ="bottom",
-    legend.title = element_blank()
-  ) 
-
-plot_organ_type + plot_seedbank
-
-ggsave("practical_examples/plots/dist_seeders_resprouters.png", width = 12, height = 8)
 
 # Why don’t resprouters ever panic during a wildfire? Because they know they’ve got roots in the matter! 
 
