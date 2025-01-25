@@ -15,12 +15,13 @@ library(ggdist)    # For plotting densities
 library(stringr)
 library(readxl)    # For reading data in Excel format
 
+here::i_am("Notebooks/00-Overview-trait-information.ipynb")
+
 # 1. Read the figshare tables ----
-field_records <- read_csv("~/Publications/Ferrer_Paris_ et al_Fireveg/Figshare_documents/input/fireveg-field-records.csv")
+field_records <- read_csv(here::here(data_dir, "figshare_data", "fireveg-field-records.csv"), show_col_types = FALSE)
 
-species_list <- read_excel("~/Publications/Ferrer_Paris_ et al_Fireveg/Figshare_documents/input/fireveg-field-report-model.xlsx", sheet = 4)
-
-sites_record <- read_excel("~/Publications/Ferrer_Paris_ et al_Fireveg/Figshare_documents/input/fireveg-field-report-model.xlsx", sheet = 2)
+species_list <- read_excel(here::here(data_dir, "figshare_data","fireveg-field-report-model.xlsx"), sheet = 4)
+sites_record <- read_excel(here::here(data_dir, "figshare_data","fireveg-field-report-model.xlsx"), sheet = 2)
 
 # 2. Last fire -----
 last_fire <- sites_record |>
