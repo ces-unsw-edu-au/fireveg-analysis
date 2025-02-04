@@ -14,73 +14,26 @@ library(ggridges)  # For plotting density ridges
 library(ggdist)    # For plotting densities
 library(stringr)
 library(readxl)    # For reading data in Excel format
+library(here)
 
 here::i_am("Notebooks/00-Overview-trait-information.ipynb")
 
 # 1. Read the figshare tables ----
-field_records <- read_csv(here::here(data_dir, "figshare_data", "fireveg-field-records.csv"), show_col_types = FALSE)
+data_dir <- "~/Publications/Ferrer_Paris_ et al_Fireveg/Figshare_documents/input"
 
-species_list <- read_excel(here::here(data_dir, "figshare_data","fireveg-field-report-model.xlsx"), sheet = 4)
-sites_record <- read_excel(here::here(data_dir, "figshare_data","fireveg-field-report-model.xlsx"), sheet = 2)
+field_records <- read_csv("~/Publications/Ferrer_Paris_ et al_Fireveg/Figshare_documents/input/fireveg-field-records.csv")
+species_list <- read_excel("~/Publications/Ferrer_Paris_ et al_Fireveg/Figshare_documents/input/fireveg-field-report-model.xlsx", sheet = 4) |>
+  mutate(Family = recode(Family, 
+                         "Fabaceae (Faboideae)" = "Fabaceae"))
 
-# 2. Last fire -----
-last_fire <- sites_record |>
-  mutate(last_fire = if_else(
-    grepl("^(2 years|3 years|1 year)", `Time since last fire (days)`),
-    "recent",
-    "older"
-  )) |>
-  select("Site label", "last_fire") |>
-  rename(visit_id = `Site label`)
-
-head(last_fire)
+sites_record <- read_excel("~/Publications/Ferrer_Paris_ et al_Fireveg/Figshare_documents/input/fireveg-field-report-model.xlsx", sheet = 2)
 
 
-# 3. Calculate traits by species -----
-# Number of individuals with a given trait. All the spp in the datset
-full_spp_trait <- field_records |>
-  mutate(spp_type = case_when(
-    resprout_organ %in% c("None") ~ "Seeder", 
-    TRUE ~ "Resprouter")
-  ) |>
-  left_join(species_list, by = c("species" = "Scientific name (as entered)")) |> # Add family information
-  left_join(last_fire, by = "visit_id") |>  # Add fire information
-  filter(last_fire == "recent") |> # Calculate the metrics only for these sites with time since last fire <= 3 years
-  group_by(species, visit_id, visit_date, spp_type, resprout_organ, seedbank, Family, last_fire) |>
-  summarise(n1 = sum(resprouts_live, na.rm = TRUE),         # N total live resprouts (N1)
-            n2 = sum(resprouts_reproductive, na.rm = TRUE), # N reproductive live resprouts (N2)
-            n5 = sum(recruits_live, na.rm = TRUE),          # N total live recruits (N5)
-            n6 = sum(recruits_reproductive, na.rm = TRUE),  # N reproductive live recruits (N6)
-            n7 = sum(resprouts_died, na.rm = TRUE),         # N Dead resprouts (N7). This variable is all 0
-            n8 = sum(recruits_died, na.rm = TRUE),          # N dead recruits (N8)
-            n9 = sum(resprouts_kill, na.rm = TRUE)      # N fire killed resprouts (N9)
-) |>
-  mutate(prop_fire_mortality = n9 /(n1 + n7 + n9),
-         prop_sprout_surv = n7/ (n1 + n7),
-         seed_adult = (n5 + n8) / (n1 + n7),
-         pro_recruit_surv = n5 / (n5 + n8),
-         prop_reprod_recruit = n6 / max(n5)
-  ) |>
-  as_tibble() 
+species_list <- read_excel(here::here(data_dir, "figshare_data","fireveg-field-report-model.xlsx"), sheet = 4) |>
+  mutate(Family = recode(Family, 
+                         "Fabaceae (Faboideae)" = "Fabaceae"))
   
-# Summary table
-full_spp_trait |> count(spp_type)
-full_spp_trait |> count(seedbank)
-full_spp_trait |> count(resprout_organ)
-full_spp_trait |> count(Family)
-full_spp_trait |> count(last_fire)
-
-# 4. Select the top 20 spp ----
-# Species with more localities and plots
-top_species <- field_records |>
-  group_by(species) |>
-  summarise(
-    n_localities = n_distinct(visit_id),
-    n_visits = n_distinct(visit_date),
-    n_plots = n_distinct(sample_nr)
-  ) |>
-  slice_max(n_localities, n = 20) |>
-  pull(species)
+sites_record <- read_excel(here::here(data_dir, "figshare_data","fireveg-field-report-model.xlsx"), sheet = 2)
 
 
 # 5. Select the top 4 families -----
@@ -91,7 +44,7 @@ species_list |>
     n_spp = n_distinct(`Scientific name (as entered)`)
   ) |>
   arrange(desc(n_spp)) |>
-  slice_max(n_spp, n = 5 ) |>
+  slice_max(n_spp, n = 6 ) |>
   na.omit(Family)
 
 top_families <- full_spp_trait |>
@@ -110,8 +63,6 @@ top_families <- full_spp_trait |>
 plot_organ_type <- full_spp_trait|> 
   filter(Family %in% top_families) |>
   filter(!is.na(resprout_organ)) |>
-  mutate(Family = recode(Family, 
-                         "Fabaceae (Faboideae)" = "Fabaceae")) |>
   group_by(Family, resprout_organ) |>
   summarise(n_species = n_distinct(species)) |>
   arrange(n_species) |> 
@@ -158,6 +109,70 @@ ggsave("practical_examples/plots/dist_seeders_resprouters.png", width = 10, heig
 
 
 # 7. Example 2: Distribution of traits in the top 20 spp ----
+# 2. Last fire -----
+
+last_fire <- sites_record |>
+  mutate(last_fire = if_else(
+    grepl("^(\\d{1,3} days|2 years|3 years|1 year)", `Time since last fire (days)`),
+    "recent",
+    "older"
+  )) |>
+  select("Site label", "last_fire") |>
+  rename(visit_id = `Site label`)
+
+
+head(last_fire)
+
+# 3. Calculate traits by species -----
+# Number of individuals with a given trait. All the spp in the datset
+full_spp_trait <- field_records |>
+  mutate(spp_type = case_when(
+    resprout_organ %in% c("None") ~ "Seeder", 
+    TRUE ~ "Resprouter")
+  ) |>
+  left_join(species_list, by = c("species" = "Scientific name (as entered)")) |> # Add family information
+  left_join(last_fire, by = "visit_id") |>  # Add fire information
+  filter(last_fire == "recent") |> # Calculate the metrics only for these sites with time since last fire <= 3 years
+  group_by(species, visit_id, visit_date, spp_type, resprout_organ, seedbank, Family, last_fire) |>
+  summarise(n1 = sum(resprouts_live, na.rm = TRUE),         # N total live resprouts (N1)
+            n2 = sum(resprouts_reproductive, na.rm = TRUE), # N reproductive live resprouts (N2)
+            n5 = sum(recruits_live, na.rm = TRUE),          # N total live recruits (N5)
+            n6 = sum(recruits_reproductive, na.rm = TRUE),  # N reproductive live recruits (N6)
+            n7 = sum(resprouts_died, na.rm = TRUE),         # N Dead resprouts (N7). This variable is all 0
+            n8 = sum(recruits_died, na.rm = TRUE),          # N dead recruits (N8)
+            n9 = sum(resprouts_kill, na.rm = TRUE)      # N fire killed resprouts (N9)
+  ) |>
+  mutate(prop_fire_mortality = n9 /(n1 + n7 + n9),
+         prop_sprout_surv = n7/ (n1 + n7),
+         seed_adult = (n5 + n8) / (n1 + n7),
+         pro_recruit_surv = n5 / (n5 + n8),
+         prop_reprod_recruit = n6 / max(n5)
+  ) |>
+  as_tibble() 
+
+# Summary table
+full_spp_trait |> count(spp_type)
+full_spp_trait |> count(seedbank)
+full_spp_trait |> count(resprout_organ)
+full_spp_trait |> count(Family)
+full_spp_trait |> count(last_fire)
+
+# 4. Select the top 20 spp ----
+# Species with more localities and plots
+top_species <- field_records |>
+  group_by(species) |>
+  summarise(
+    n_localities = n_distinct(visit_id),
+    n_visits = n_distinct(visit_date),
+    n_plots = n_distinct(sample_nr)
+  ) |>
+  slice_max(n_localities, n = 20) |>
+  pull(species)
+
+
+
+
+
 
 plot_mortality <- full_spp_trait |>
   filter(species %in% top_species) |> # Only the top 20 spp.
